@@ -11,6 +11,10 @@ const paymentRoutes = require("./routes/payment.routes");
 
 const app = express();
 
+// Vercel runs this behind a proxy — needed so express-rate-limit can read
+// the real client IP from X-Forwarded-For instead of throwing.
+app.set("trust proxy", 1);
+
 connectDB();
 
 app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
@@ -43,4 +47,12 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Private DNS AdGuard API running on port ${PORT}`));
+
+// Only start a listening server when run directly (local dev / a normal host).
+// On Vercel this file is loaded as a serverless function instead, so it just
+// exports `app` and Vercel handles the listening part.
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Private DNS AdGuard API running on port ${PORT}`));
+}
+
+module.exports = app;
