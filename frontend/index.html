@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Private DNS AdGuard — Control Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ============== AUTH SCREEN ============== -->
+<div id="auth-shell" class="auth-shell hidden">
+  <div class="auth-card">
+    <div class="brand">
+      <div class="shield-pulse">
+        <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+          <path d="M17 3L28 7v9c0 8-5.5 13-11 15C11.5 29 6 24 6 16V7l11-4z" fill="#123a34" stroke="#22d3b8" stroke-width="1.6"/>
+          <path d="M12 17l3.5 3.5L23 13" stroke="#22d3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-name">Private DNS AdGuard<span>CUSTOMER CONTROL PANEL</span></div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-mode="login">Log in</button>
+      <button class="auth-tab" data-mode="register">Create account</button>
+    </div>
+
+    <form id="login-form">
+      <div id="login-error" class="form-error hidden"></div>
+      <div class="field"><label>Email</label><input type="email" id="login-email" required placeholder="you@example.com" /></div>
+      <div class="field"><label>Password</label><input type="password" id="login-password" required placeholder="••••••••" /></div>
+      <button class="btn btn-primary" type="submit">Log in</button>
+    </form>
+
+    <form id="register-form" class="hidden">
+      <div id="register-error" class="form-error hidden"></div>
+      <div class="field"><label>Full name</label><input type="text" id="reg-name" required placeholder="Full name" /></div>
+      <div class="field"><label>Email</label><input type="email" id="reg-email" required placeholder="you@example.com" /></div>
+      <div class="field"><label>Phone</label><input type="tel" id="reg-phone" required placeholder="07XXXXXXXX" /></div>
+      <div class="field"><label>Country</label>
+        <select id="reg-country">
+          <option value="LK">Sri Lanka</option>
+          <option value="US">United States</option>
+          <option value="GB">United Kingdom</option>
+          <option value="AU">Australia</option>
+          <option value="CA">Canada</option>
+          <option value="IN">India</option>
+          <option value="JP">Japan</option>
+          <option value="AE">UAE</option>
+          <option value="SG">Singapore</option>
+        </select>
+      </div>
+      <div class="field"><label>Password</label><input type="password" id="reg-password" required placeholder="At least 6 characters" /></div>
+      <button class="btn btn-primary" type="submit">Create account</button>
+    </form>
+
+    <p class="form-note">Devices, IMEIs and DNS status are private to your account.</p>
+  </div>
+</div>
+
+<!-- ============== APP SHELL ============== -->
+<div id="app-shell" class="app-shell hidden">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="shield-pulse">
+        <svg width="30" height="30" viewBox="0 0 34 34" fill="none">
+          <path d="M17 3L28 7v9c0 8-5.5 13-11 15C11.5 29 6 24 6 16V7l11-4z" fill="#123a34" stroke="#22d3b8" stroke-width="1.6"/>
+          <path d="M12 17l3.5 3.5L23 13" stroke="#22d3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-name" style="font-size:14px;">Private DNS<span>AD GUARD</span></div>
+    </div>
+
+    <button class="nav-item active" data-view="devices">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+      Devices
+    </button>
+    <button class="nav-item" data-view="account">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+      Account
+    </button>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="name" id="sidebar-name">—</div>
+        <div class="email" id="sidebar-email">—</div>
+      </div>
+      <button class="btn btn-ghost" id="logout-btn" style="width:100%;">Log out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- Devices view -->
+    <section id="view-devices" class="view">
+      <div class="page-header">
+        <div>
+          <h1>Your devices</h1>
+          <p>Everything you've registered for DNS ad-block setup.</p>
+        </div>
+        <button class="btn btn-primary" id="add-device-btn">+ Add device</button>
+      </div>
+
+      <div id="device-grid" class="device-grid hidden"></div>
+      <div id="device-empty" class="empty-state hidden">
+        <p>No devices yet.</p>
+        <p class="muted" style="font-size:13px;">Add your first phone to get a DNS ad-block profile set up.</p>
+      </div>
+    </section>
+
+    <!-- Account view -->
+    <section id="view-account" class="view hidden">
+      <div class="page-header">
+        <div>
+          <h1>Account</h1>
+          <p>Your contact details, used for support and payment receipts.</p>
+        </div>
+      </div>
+      <div class="auth-card" style="max-width:420px; padding:22px;">
+        <div class="field"><label>Name</label><div id="acct-name" class="mono"></div></div>
+        <div class="field"><label>Email</label><div id="acct-email" class="mono"></div></div>
+        <div class="field"><label>Phone</label><div id="acct-phone" class="mono"></div></div>
+        <div class="field"><label>Country</label><div id="acct-country" class="mono"></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ============== ADD DEVICE WIZARD ============== -->
+<div id="wizard-overlay" class="wizard-overlay hidden">
+  <div class="wizard">
+    <div class="wizard-steps">
+      <div class="wizard-step-dot current"></div>
+      <div class="wizard-step-dot"></div>
+      <div class="wizard-step-dot"></div>
+    </div>
+
+    <div class="wizard-body">
+      <!-- Step 1: protection type -->
+      <div id="wizard-step-1" class="wizard-pane">
+        <h2>What should this device block?</h2>
+        <p class="step-hint">You can select both — most customers do.</p>
+
+        <label class="check-option checked">
+          <input type="checkbox" id="opt-app-ads" checked />
+          <div>
+            <div class="opt-title">In-app ads</div>
+            <div class="opt-desc">Blocks ad banners and video ads inside apps.</div>
+          </div>
+        </label>
+
+        <label class="check-option checked">
+          <input type="checkbox" id="opt-bg-ads" checked />
+          <div>
+            <div class="opt-title">Background ads</div>
+            <div class="opt-desc">Blocks pop-up and notification-style ads that appear outside apps.</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Step 2: country / price -->
+      <div id="wizard-step-2" class="wizard-pane hidden">
+        <h2>Where's this device based?</h2>
+        <p class="step-hint">Price is shown in the local currency automatically.</p>
+
+        <div class="field">
+          <label>Country</label>
+          <select id="wizard-country"></select>
+        </div>
+
+        <div class="price-display" id="wizard-price">
+          <span class="label">Calculating…</span>
+        </div>
+      </div>
+
+      <!-- Step 3: device info -->
+      <div id="wizard-step-3" class="wizard-pane hidden">
+        <h2>Device details</h2>
+        <p class="step-hint">Find the IMEI in Settings → About phone, or by dialing *#06#.</p>
+
+        <div class="field">
+          <label>IMEI number</label>
+          <input type="text" id="wizard-imei" inputmode="numeric" placeholder="e.g. 356938035643809" />
+        </div>
+
+        <div class="field">
+          <label>Phone brand</label>
+          <select id="wizard-brand"></select>
+        </div>
+
+        <div class="field" id="wizard-brand-custom-wrap">
+          <label>Brand name (if not listed)</label>
+          <input type="text" id="wizard-brand-custom" class="hidden" style="text-transform:uppercase;" placeholder="TYPE BRAND IN CAPITALS" />
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-footer">
+      <button class="btn btn-ghost" id="wizard-back">Back</button>
+      <button class="btn btn-ghost" id="wizard-close">Cancel</button>
+      <button class="btn btn-primary" id="wizard-next">Continue</button>
+    </div>
+  </div>
+</div>
+
+<script>window.API_BASE = "http://localhost:5000/api"; // change to your deployed backend URL</script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

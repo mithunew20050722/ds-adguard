@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Payment received — Private DNS AdGuard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600&family=Inter:wght@400;500&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-card" style="text-align:center;">
+    <div class="shield-pulse" style="margin:0 auto 16px;">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+        <path d="M17 3L28 7v9c0 8-5.5 13-11 15C11.5 29 6 24 6 16V7l11-4z" fill="#123a34" stroke="#22d3b8" stroke-width="1.6"/>
+        <path d="M12 17l3.5 3.5L23 13" stroke="#22d3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2 style="font-family:var(--font-display); margin:0 0 6px;">Payment received</h2>
+    <p class="muted" style="font-size:13.5px; margin:0 0 6px;">Order <span class="mono" id="order-ref"></span></p>
+    <p class="muted" style="font-size:13.5px;">Your device is now connecting — this usually takes 2–3 minutes. You'll see it update automatically on your dashboard.</p>
+    <a class="btn btn-primary" href="index.html" style="margin-top:16px; text-decoration:none;">Go to dashboard</a>
+  </div>
+</div>
+<script>
+  const params = new URLSearchParams(location.search);
+  document.getElementById("order-ref").textContent = params.get("order") || "—";
+</script>
+</body>
+</html>

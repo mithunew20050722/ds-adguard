@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Payment cancelled — Private DNS AdGuard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600&family=Inter:wght@400;500&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-card" style="text-align:center;">
+    <h2 style="font-family:var(--font-display); margin:0 0 6px; color:var(--danger);">Payment cancelled</h2>
+    <p class="muted" style="font-size:13.5px; margin:0 0 6px;">Order <span class="mono" id="order-ref"></span></p>
+    <p class="muted" style="font-size:13.5px;">No charge was made. The device is saved on your account — you can pay again any time from the dashboard.</p>
+    <a class="btn btn-primary" href="index.html" style="margin-top:16px; text-decoration:none;">Back to dashboard</a>
+  </div>
+</div>
+<script>
+  const params = new URLSearchParams(location.search);
+  document.getElementById("order-ref").textContent = params.get("order") || "—";
+</script>
+</body>
+</html>
