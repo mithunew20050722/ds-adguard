@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const validator = require("validator");
 const User = require("../models/User");
 const { requireAuth } = require("../middleware/auth");
+const { sendPasswordResetOtp } = require("../utils/mailer");
 
 const router = express.Router();
 
@@ -62,6 +63,63 @@ router.post("/login", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed. Try again." });
+  }
+});
+
+// POST /api/auth/forgot-password
+// Always responds with a generic success message (even if the email doesn't
+// exist) so people can't use this endpoint to find out who has an account.
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !validator.isEmail(email)) {
+      return res.status(400).json({ error: "Enter a valid email address." });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (user) {
+      const otp = String(Math.floor(100000 + Math.random() * 900000)); // 6 digits
+      await user.setResetOtp(otp);
+      await user.save();
+      try {
+        await sendPasswordResetOtp(user.email, otp);
+      } catch (mailErr) {
+        console.error("Failed to send OTP email:", mailErr.message);
+        return res.status(500).json({ error: "Could not send the reset email. Try again shortly." });
+      }
+    }
+
+    res.json({ message: "If an account exists for that email, a reset code has been sent." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not process request. Try again." });
+  }
+});
+
+// POST /api/auth/reset-password
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ error: "Email, code and new password are all required." });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters." });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user || !(await user.checkResetOtp(otp))) {
+      return res.status(400).json({ error: "Invalid or expired code." });
+    }
+
+    await user.setPassword(newPassword);
+    user.clearResetOtp();
+    await user.save();
+
+    res.json({ message: "Password updated. You can now log in." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not reset password. Try again." });
   }
 });
 
