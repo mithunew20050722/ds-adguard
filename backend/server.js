@@ -19,6 +19,20 @@ connectDB().catch((err) => {
   console.error("Startup DB connection failed (will retry per-request):", err.message);
 });
 
+// Every /api request waits for the (cached) DB connection before hitting a
+// route. On a cold start the connection from the line above may not be
+// ready yet -- without this, requests would fail with a generic DB error
+// instead of just waiting the extra moment for the connection.
+app.use("/api", async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("DB connection failed:", err.message);
+    res.status(503).json({ error: "Database unavailable. Please try again in a moment." });
+  }
+});
+
 app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
 app.use(express.json());
 
