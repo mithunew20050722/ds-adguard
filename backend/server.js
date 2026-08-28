@@ -15,7 +15,9 @@ const app = express();
 // the real client IP from X-Forwarded-For instead of throwing.
 app.set("trust proxy", 1);
 
-connectDB();
+connectDB().catch((err) => {
+  console.error("Startup DB connection failed (will retry per-request):", err.message);
+});
 
 app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
 app.use(express.json());
