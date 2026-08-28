@@ -31,4 +31,25 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireAdmin };
+// ---- Password-only admin gate (used by the separate /admin.html panel) ----
+// No user account involved: enter the shop's admin password on /admin.html,
+// get back a short-lived admin token, and every /api/admin/* route below
+// checks that token instead of a logged-in User.
+const jwtLib = require("jsonwebtoken");
+
+function requireAdminToken(req, res, next) {
+  try {
+    const header = req.headers.authorization || "";
+    const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+    if (!token) return res.status(401).json({ error: "Admin login required." });
+
+    const payload = jwtLib.verify(token, process.env.JWT_SECRET);
+    if (!payload.admin) return res.status(401).json({ error: "Admin login required." });
+
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Admin session expired. Log in again." });
+  }
+}
+
+module.exports = { requireAuth, requireAdmin, requireAdminToken };
