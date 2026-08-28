@@ -24,14 +24,21 @@ const Api = {
     try { data = await res.json(); } catch (_) {}
 
     if (!res.ok) {
-      throw new Error(data.error || "Something went wrong. Try again.");
+      const err = new Error(data.error || "Something went wrong. Try again.");
+      if (data.needsVerification) err.needsVerification = true;
+      if (data.email) err.email = data.email;
+      throw err;
     }
     return data;
   },
 
   register(payload) { return this.request("/auth/register", { method: "POST", body: payload }); },
+  verifyEmail(payload) { return this.request("/auth/verify-email", { method: "POST", body: payload }); },
+  resendVerification(email) { return this.request("/auth/resend-verification", { method: "POST", body: { email } }); },
   login(payload) { return this.request("/auth/login", { method: "POST", body: payload }); },
   me() { return this.request("/auth/me"); },
+  updateProfile(payload) { return this.request("/auth/me", { method: "PUT", body: payload }); },
+  changePassword(payload) { return this.request("/auth/change-password", { method: "PUT", body: payload }); },
   forgotPassword(email) { return this.request("/auth/forgot-password", { method: "POST", body: { email } }); },
   resetPassword(payload) { return this.request("/auth/reset-password", { method: "POST", body: payload }); },
 

@@ -20,14 +20,22 @@ function showToast(message, type = "success") {
 /* ---------------- Auth screen ---------------- */
 
 function showAuthForm(name) {
-  const forms = { login: "#login-form", register: "#register-form", forgot: "#forgot-form", reset: "#reset-form" };
+  const forms = { login: "#login-form", register: "#register-form", forgot: "#forgot-form", reset: "#reset-form", verify: "#verify-form" };
   Object.entries(forms).forEach(([key, sel]) => $(sel).classList.toggle("hidden", key !== name));
   $$(".auth-tab").forEach((t) => t.classList.remove("active"));
   if (name === "login" || name === "register") {
     const tab = $$(".auth-tab").find((t) => t.dataset.mode === name);
     if (tab) tab.classList.add("active");
   }
-  $("#auth-bottom-note").classList.toggle("hidden", name === "forgot" || name === "reset");
+  $("#auth-bottom-note").classList.toggle("hidden", name !== "login" && name !== "register");
+}
+
+function goToVerify(email) {
+  $("#verify-email-label").textContent = email;
+  $("#verify-otp").value = "";
+  $("#verify-error").classList.add("hidden");
+  $("#verify-info").classList.add("hidden");
+  showAuthForm("verify");
 }
 
 function initAuthScreen() {
@@ -48,6 +56,10 @@ function initAuthScreen() {
       state.user = user;
       enterApp();
     } catch (err) {
+      if (err.needsVerification) {
+        goToVerify(err.email || $("#login-email").value.trim());
+        return;
+      }
       errBox.textContent = err.message;
       errBox.classList.remove("hidden");
     }
@@ -58,12 +70,28 @@ function initAuthScreen() {
     const errBox = $("#register-error");
     errBox.classList.add("hidden");
     try {
-      const { token, user } = await Api.register({
+      const result = await Api.register({
         name: $("#reg-name").value.trim(),
         email: $("#reg-email").value.trim(),
         phone: $("#reg-phone").value.trim(),
         password: $("#reg-password").value,
         country: $("#reg-country").value,
+      });
+      goToVerify(result.email);
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove("hidden");
+    }
+  });
+
+  $("#verify-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("#verify-error");
+    errBox.classList.add("hidden");
+    try {
+      const { token, user } = await Api.verifyEmail({
+        email: $("#verify-email-label").textContent,
+        otp: $("#verify-otp").value.trim(),
       });
       Api.setToken(token);
       state.user = user;
@@ -72,6 +100,26 @@ function initAuthScreen() {
       errBox.textContent = err.message;
       errBox.classList.remove("hidden");
     }
+  });
+
+  $("#resend-verification").addEventListener("click", async (e) => {
+    e.preventDefault();
+    const infoBox = $("#verify-info");
+    const errBox = $("#verify-error");
+    errBox.classList.add("hidden");
+    try {
+      const { message } = await Api.resendVerification($("#verify-email-label").textContent);
+      infoBox.textContent = message;
+      infoBox.classList.remove("hidden");
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove("hidden");
+    }
+  });
+
+  $("#show-login-from-verify").addEventListener("click", (e) => {
+    e.preventDefault();
+    showAuthForm("login");
   });
 
   $("#show-forgot").addEventListener("click", (e) => {
@@ -138,10 +186,58 @@ function initNav() {
     });
   });
 
-  $("#logout-btn").addEventListener("click", () => {
+  function doLogout() {
     Api.setToken(null);
     state.user = null;
     location.reload();
+  }
+  $("#logout-btn").addEventListener("click", doLogout);
+  $("#acct-logout-btn").addEventListener("click", doLogout);
+}
+
+function fillAccountView() {
+  $("#acct-name").value = state.user.name;
+  $("#acct-email").textContent = state.user.email;
+  $("#acct-phone").value = state.user.phone;
+  $("#acct-country").value = state.user.country || "LK";
+}
+
+function initAccountForms() {
+  $("#acct-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("#acct-error");
+    errBox.classList.add("hidden");
+    try {
+      const { user } = await Api.updateProfile({
+        name: $("#acct-name").value.trim(),
+        phone: $("#acct-phone").value.trim(),
+        country: $("#acct-country").value,
+      });
+      state.user = user;
+      $("#sidebar-name").textContent = user.name;
+      showToast("Account details updated.");
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove("hidden");
+    }
+  });
+
+  $("#change-pw-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("#pw-error");
+    errBox.classList.add("hidden");
+    try {
+      await Api.changePassword({
+        currentPassword: $("#pw-current").value,
+        newPassword: $("#pw-new").value,
+      });
+      $("#pw-current").value = "";
+      $("#pw-new").value = "";
+      showToast("Password updated.");
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove("hidden");
+    }
   });
 }
 
@@ -150,6 +246,7 @@ async function enterApp() {
   $("#app-shell").classList.remove("hidden");
   $("#sidebar-name").textContent = state.user.name;
   $("#sidebar-email").textContent = state.user.email;
+  fillAccountView();
 
   const [{ brands }, { countries }] = await Promise.all([Api.brands(), Api.countries()]);
   state.brands = brands;
@@ -458,6 +555,7 @@ async function boot() {
   initAuthScreen();
   initNav();
   initWizard();
+  initAccountForms();
 
   if (Api.token) {
     try {
