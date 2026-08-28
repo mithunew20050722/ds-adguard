@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Private DNS AdGuard — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ============== ADMIN LOGIN ============== -->
+<div id="admin-auth-shell" class="auth-shell hidden">
+  <div class="auth-card">
+    <div class="brand">
+      <div class="shield-pulse">
+        <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+          <path d="M17 3L28 7v9c0 8-5.5 13-11 15C11.5 29 6 24 6 16V7l11-4z" fill="#123a34" stroke="#22d3b8" stroke-width="1.6"/>
+          <path d="M12 17l3.5 3.5L23 13" stroke="#22d3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-name">Private DNS AdGuard<span>ADMIN PANEL</span></div>
+    </div>
+
+    <form id="admin-login-form">
+      <div id="admin-login-error" class="form-error hidden"></div>
+      <div class="field"><label>Admin password</label><input type="password" id="admin-login-password" required placeholder="••••••••" /></div>
+      <button class="btn btn-primary" type="submit">Log in</button>
+    </form>
+    <p class="form-note">This is the store owner's admin panel, not the customer dashboard.</p>
+  </div>
+</div>
+
+<!-- ============== ADMIN APP SHELL ============== -->
+<div id="admin-app-shell" class="app-shell hidden">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="shield-pulse">
+        <svg width="30" height="30" viewBox="0 0 34 34" fill="none">
+          <path d="M17 3L28 7v9c0 8-5.5 13-11 15C11.5 29 6 24 6 16V7l11-4z" fill="#123a34" stroke="#22d3b8" stroke-width="1.6"/>
+          <path d="M12 17l3.5 3.5L23 13" stroke="#22d3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-name" style="font-size:14px;">Private DNS<span>ADMIN</span></div>
+    </div>
+
+    <button class="nav-item active" data-view="users">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+      Users
+    </button>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="name">Admin</div>
+      </div>
+      <button class="btn btn-ghost" id="admin-logout-btn" style="width:100%;">Log out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section id="view-users" class="view">
+      <div class="page-header">
+        <div>
+          <h1>Users</h1>
+          <p>Everyone with an account, and the devices they've registered.</p>
+        </div>
+      </div>
+
+      <div class="search-row">
+        <input type="text" id="user-search" placeholder="Search by name, email or phone…" />
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Country</th>
+              <th>Verified</th>
+              <th>Role</th>
+              <th>Devices</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody id="user-table-body"></tbody>
+        </table>
+      </div>
+      <div id="user-empty" class="empty-state hidden" style="margin-top:16px;">
+        <p>No users match your search.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ============== USER DETAIL SIDE PANEL ============== -->
+<div id="user-panel-overlay" class="side-panel-overlay hidden">
+  <div class="side-panel">
+    <button class="btn btn-ghost sp-close" id="user-panel-close" style="width:auto; padding:6px 10px;">✕</button>
+    <h2 id="sp-user-name">—</h2>
+    <p class="muted mono" id="sp-user-email" style="font-size:12.5px; margin:0;"></p>
+
+    <div id="sp-error" class="form-error hidden" style="margin-top:16px;"></div>
+
+    <div class="side-panel-section">
+      <h3>Account details</h3>
+      <div class="field"><label>Name</label><input type="text" id="sp-name" /></div>
+      <div class="field"><label>Phone</label><input type="tel" id="sp-phone" /></div>
+      <div class="field"><label>Country</label>
+        <select id="sp-country">
+          <option value="LK">Sri Lanka</option>
+          <option value="US">United States</option>
+          <option value="GB">United Kingdom</option>
+          <option value="AU">Australia</option>
+          <option value="CA">Canada</option>
+          <option value="IN">India</option>
+          <option value="JP">Japan</option>
+          <option value="AE">UAE</option>
+          <option value="SG">Singapore</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Role</label>
+        <select id="sp-role">
+          <option value="customer">Customer</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="field inline-row">
+        <label style="margin:0;">
+          <input type="checkbox" id="sp-verified" style="accent-color:var(--accent); margin-right:6px;" />
+          Email verified
+        </label>
+      </div>
+      <button class="btn btn-primary" id="sp-save-user">Save changes</button>
+    </div>
+
+    <div class="side-panel-section">
+      <h3>Devices (<span id="sp-device-count">0</span>)</h3>
+      <div id="sp-devices"></div>
+      <div id="sp-devices-empty" class="empty-state hidden">
+        <p>No devices registered.</p>
+      </div>
+    </div>
+
+    <div class="side-panel-section">
+      <button class="btn btn-danger" id="sp-delete-user" style="width:100%;">Delete this user</button>
+    </div>
+  </div>
+</div>
+
+<script>window.API_BASE = "/api";</script>
+<script src="js/admin.js"></script>
+</body>
+</html>
