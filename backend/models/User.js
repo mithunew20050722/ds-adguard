@@ -11,9 +11,31 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ["customer", "admin"], default: "customer" },
     resetOtpHash: { type: String, default: null },
     resetOtpExpires: { type: Date, default: null },
+
+    // Email verification (required after registering, before login works)
+    emailVerified: { type: Boolean, default: false },
+    verifyOtpHash: { type: String, default: null },
+    verifyOtpExpires: { type: Date, default: null },
   },
   { timestamps: true }
 );
+
+userSchema.methods.setVerifyOtp = async function (otp) {
+  const salt = await bcrypt.genSalt(10);
+  this.verifyOtpHash = await bcrypt.hash(otp, salt);
+  this.verifyOtpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+};
+
+userSchema.methods.checkVerifyOtp = function (otp) {
+  if (!this.verifyOtpHash || !this.verifyOtpExpires) return false;
+  if (this.verifyOtpExpires.getTime() < Date.now()) return false;
+  return bcrypt.compare(otp, this.verifyOtpHash);
+};
+
+userSchema.methods.clearVerifyOtp = function () {
+  this.verifyOtpHash = null;
+  this.verifyOtpExpires = null;
+};
 
 userSchema.methods.setPassword = async function (plainPassword) {
   const salt = await bcrypt.genSalt(10);
@@ -49,6 +71,7 @@ userSchema.methods.toSafeObject = function () {
     phone: this.phone,
     country: this.country,
     role: this.role,
+    emailVerified: this.emailVerified,
     createdAt: this.createdAt,
   };
 };
