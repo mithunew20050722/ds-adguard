@@ -33,6 +33,7 @@
       <div class="field"><label>Email</label><input type="email" id="login-email" required placeholder="you@example.com" /></div>
       <div class="field"><label>Password</label><input type="password" id="login-password" required placeholder="••••••••" /></div>
       <button class="btn btn-primary" type="submit">Log in</button>
+      <p class="form-note"><a href="#" id="show-forgot">Forgot password?</a></p>
     </form>
 
     <form id="register-form" class="hidden">
@@ -57,7 +58,26 @@
       <button class="btn btn-primary" type="submit">Create account</button>
     </form>
 
-    <p class="form-note">Devices, IMEIs and DNS status are private to your account.</p>
+    <!-- Step 1: request an OTP code by email -->
+    <form id="forgot-form" class="hidden">
+      <div id="forgot-error" class="form-error hidden"></div>
+      <div id="forgot-info" class="form-note hidden"></div>
+      <div class="field"><label>Email</label><input type="email" id="forgot-email" required placeholder="you@example.com" /></div>
+      <button class="btn btn-primary" type="submit">Send reset code</button>
+      <p class="form-note"><a href="#" id="show-login-from-forgot">Back to log in</a></p>
+    </form>
+
+    <!-- Step 2: enter the OTP + new password -->
+    <form id="reset-form" class="hidden">
+      <div id="reset-error" class="form-error hidden"></div>
+      <div class="field"><label>Email</label><input type="email" id="reset-email" required placeholder="you@example.com" /></div>
+      <div class="field"><label>6-digit code</label><input type="text" id="reset-otp" required maxlength="6" placeholder="123456" /></div>
+      <div class="field"><label>New password</label><input type="password" id="reset-password" required placeholder="At least 6 characters" /></div>
+      <button class="btn btn-primary" type="submit">Reset password</button>
+      <p class="form-note"><a href="#" id="show-login-from-reset">Back to log in</a></p>
+    </form>
+
+    <p class="form-note" id="auth-bottom-note">Devices, IMEIs and DNS status are private to your account.</p>
   </div>
 </div>
 
@@ -205,13 +225,7 @@
   </div>
 </div>
 
-<script>
-  // Same-machine dev (localhost / 127.0.0.1) -> hit the local backend on :5000, like before.
-  // Any other domain (Vercel, custom domain, etc.) -> call the API on the same domain.
-  window.API_BASE = (["localhost", "127.0.0.1"].includes(location.hostname))
-    ? "http://localhost:5000/api"
-    : "/api";
-</script>
+<script>window.API_BASE = "http://localhost:5000/api"; // change to your deployed backend URL</script>
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
 </body>
