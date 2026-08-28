@@ -43,4 +43,27 @@ async function sendPasswordResetOtp(toEmail, otp) {
   });
 }
 
-module.exports = { sendPasswordResetOtp };
+async function sendVerificationOtp(toEmail, otp) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    throw new Error("SMTP_USER / SMTP_PASS are not set in environment variables.");
+  }
+
+  const transport = buildTransport();
+
+  await transport.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: toEmail,
+    subject: "Verify your Private DNS AdGuard account",
+    text: `Your verification code is ${otp}. It expires in 10 minutes. If you didn't create this account, you can ignore this email.`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 420px; margin: 0 auto;">
+        <h2 style="color:#123a34;">Private DNS AdGuard</h2>
+        <p>Welcome! Your email verification code is:</p>
+        <p style="font-size: 28px; font-weight: 700; letter-spacing: 4px; color:#0f8a73;">${otp}</p>
+        <p>This code expires in 10 minutes. If you didn't create this account, you can safely ignore this email.</p>
+      </div>
+    `,
+  });
+}
+
+module.exports = { sendPasswordResetOtp, sendVerificationOtp };
