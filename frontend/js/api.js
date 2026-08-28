@@ -32,6 +32,8 @@ const Api = {
   register(payload) { return this.request("/auth/register", { method: "POST", body: payload }); },
   login(payload) { return this.request("/auth/login", { method: "POST", body: payload }); },
   me() { return this.request("/auth/me"); },
+  forgotPassword(email) { return this.request("/auth/forgot-password", { method: "POST", body: { email } }); },
+  resetPassword(payload) { return this.request("/auth/reset-password", { method: "POST", body: payload }); },
 
   brands() { return this.request("/devices/brands"); },
   countries() { return this.request("/devices/countries"); },

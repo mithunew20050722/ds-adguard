@@ -19,15 +19,20 @@ function showToast(message, type = "success") {
 
 /* ---------------- Auth screen ---------------- */
 
+function showAuthForm(name) {
+  const forms = { login: "#login-form", register: "#register-form", forgot: "#forgot-form", reset: "#reset-form" };
+  Object.entries(forms).forEach(([key, sel]) => $(sel).classList.toggle("hidden", key !== name));
+  $$(".auth-tab").forEach((t) => t.classList.remove("active"));
+  if (name === "login" || name === "register") {
+    const tab = $$(".auth-tab").find((t) => t.dataset.mode === name);
+    if (tab) tab.classList.add("active");
+  }
+  $("#auth-bottom-note").classList.toggle("hidden", name === "forgot" || name === "reset");
+}
+
 function initAuthScreen() {
   $$(".auth-tab").forEach((tab) => {
-    tab.addEventListener("click", () => {
-      $$(".auth-tab").forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
-      const mode = tab.dataset.mode;
-      $("#login-form").classList.toggle("hidden", mode !== "login");
-      $("#register-form").classList.toggle("hidden", mode !== "register");
-    });
+    tab.addEventListener("click", () => showAuthForm(tab.dataset.mode));
   });
 
   $("#login-form").addEventListener("submit", async (e) => {
@@ -63,6 +68,57 @@ function initAuthScreen() {
       Api.setToken(token);
       state.user = user;
       enterApp();
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove("hidden");
+    }
+  });
+
+  $("#show-forgot").addEventListener("click", (e) => {
+    e.preventDefault();
+    showAuthForm("forgot");
+  });
+  $("#show-login-from-forgot").addEventListener("click", (e) => {
+    e.preventDefault();
+    showAuthForm("login");
+  });
+  $("#show-login-from-reset").addEventListener("click", (e) => {
+    e.preventDefault();
+    showAuthForm("login");
+  });
+
+  $("#forgot-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("#forgot-error");
+    const infoBox = $("#forgot-info");
+    errBox.classList.add("hidden");
+    infoBox.classList.add("hidden");
+    const email = $("#forgot-email").value.trim();
+    try {
+      const { message } = await Api.forgotPassword(email);
+      infoBox.textContent = message;
+      infoBox.classList.remove("hidden");
+      $("#reset-email").value = email;
+      showAuthForm("reset");
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove("hidden");
+    }
+  });
+
+  $("#reset-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("#reset-error");
+    errBox.classList.add("hidden");
+    try {
+      await Api.resetPassword({
+        email: $("#reset-email").value.trim(),
+        otp: $("#reset-otp").value.trim(),
+        newPassword: $("#reset-password").value,
+      });
+      showToast("Password updated. Log in with your new password.");
+      showAuthForm("login");
+      $("#login-email").value = $("#reset-email").value;
     } catch (err) {
       errBox.textContent = err.message;
       errBox.classList.remove("hidden");
