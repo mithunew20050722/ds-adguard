@@ -1,29 +1,32 @@
-const MIN_CONNECT_MS = 2 * 60 * 1000; // 2 minutes
-const MAX_CONNECT_MS = 3 * 60 * 1000; // 3 minutes
+// A device's real status is derived from whether the proxy server has seen
+// its Private DNS traffic recently — there's no fake countdown anymore
+// (the earlier version simulated a 2-3 minute "connecting" wait; now the
+// device is either genuinely sending DNS queries through its link or not).
 
-/** Call this the moment a device should start "connecting" (e.g. payment confirmed). */
-function randomConnectingUntil() {
-  const wait = MIN_CONNECT_MS + Math.random() * (MAX_CONNECT_MS - MIN_CONNECT_MS);
-  return new Date(Date.now() + wait);
-}
+const DISCONNECT_AFTER_MINUTES = Number(process.env.DISCONNECT_AFTER_MINUTES || 3);
 
 /**
- * Lazily flips a device from "connecting" to "active" once its window has
- * passed. No background job/cron needed — this runs cheaply on every read.
- * Mutates and (if changed) saves the device; returns the device either way.
+ * Computes the current display status for a device without needing a
+ * background job — cheap enough to run on every read.
+ *   - "pending"      : link generated, never seen a connection yet
+ *   - "connected"    : a heartbeat arrived within the last N minutes
+ *   - "disconnected" : has connected before, but gone quiet
  */
-async function resolveDeviceStatus(device) {
-  if (device.status === "connecting" && device.connectingUntil && Date.now() >= device.connectingUntil.getTime()) {
-    device.status = "active";
-    device.dnsProfile.configured = true;
-    device.dnsProfile.configuredAt = new Date();
-    await device.save();
+function resolveDeviceStatus(device) {
+  if (!device.network?.firstConnectedAt) {
+    device.status = "pending";
+    return device;
   }
+
+  const lastSeen = device.network.lastSeenAt;
+  const ageMs = lastSeen ? Date.now() - new Date(lastSeen).getTime() : Infinity;
+
+  device.status = ageMs <= DISCONNECT_AFTER_MINUTES * 60 * 1000 ? "connected" : "disconnected";
   return device;
 }
 
-async function resolveDeviceStatuses(devices) {
-  return Promise.all(devices.map(resolveDeviceStatus));
+function resolveDeviceStatuses(devices) {
+  return devices.map(resolveDeviceStatus);
 }
 
-module.exports = { randomConnectingUntil, resolveDeviceStatus, resolveDeviceStatuses };
+module.exports = { resolveDeviceStatus, resolveDeviceStatuses, DISCONNECT_AFTER_MINUTES };
