@@ -3,7 +3,6 @@ const Order = require("../models/Order");
 const Device = require("../models/Device");
 const { requireAuth } = require("../middleware/auth");
 const { generateHash, getCheckoutUrl, verifyNotifySignature } = require("../utils/payhere");
-const { randomConnectingUntil } = require("../utils/deviceStatus");
 
 const router = express.Router();
 
@@ -88,14 +87,10 @@ router.post("/payhere/notify", express.urlencoded({ extended: true }), async (re
       order.status = "paid";
       order.gatewayReference = body.payment_id;
       await order.save();
-
-      // Move the device into the "connecting" window — it'll show a live
-      // countdown on the frontend and flip itself to "active" once the
-      // 2-3 minute window passes (see utils/deviceStatus.js).
-      await Device.findByIdAndUpdate(order.device, {
-        status: "connecting",
-        connectingUntil: randomConnectingUntil(),
-      });
+      // Note: the device's link/connection status is independent of payment
+      // now — it was already generated when the device was created, and its
+      // pending/connected/disconnected status is driven purely by real DNS
+      // traffic (see utils/deviceStatus.js). Nothing to update here.
     } else if (["-1", "-2", "-3"].includes(body.status_code)) {
       order.status = body.status_code === "-1" ? "cancelled" : "failed";
       await order.save();
@@ -109,50 +104,32 @@ router.post("/payhere/notify", express.urlencoded({ extended: true }), async (re
 });
 
 // POST /api/payments/test-activate  { deviceId, code }
-// Admin/dev-only shortcut: skips the real payment gateway entirely and marks
-// the device as paid, gated behind a password set in .env (TEST_ACTIVATE_CODE).
-// Not linked from the normal "Pay now" button — only reachable from the
-// separate admin/test UI. If TEST_ACTIVATE_CODE isn't set in .env, this
-// route refuses to do anything (so it's inert in production unless you
-// explicitly opt in).
+// Password-gated action used right after a device is created, to reveal
+// its Private DNS link (Copy + OK in the UI). The link itself was already
+// auto-generated at creation time — this step exists purely as a
+// confirmation gate before showing/copying it, using the same password
+// prompt this project already had. Gated behind TEST_ACTIVATE_CODE in
+// .env; if that's not set, this route refuses to do anything.
 router.post("/test-activate", requireAuth, async (req, res) => {
   try {
     const configuredCode = process.env.TEST_ACTIVATE_CODE;
     if (!configuredCode) {
-      return res.status(400).json({ error: "Test activation is not enabled on this server." });
+      return res.status(400).json({ error: "Confirmation code is not enabled on this server." });
     }
 
     const { deviceId, code } = req.body;
     if (!code || code !== configuredCode) {
-      return res.status(401).json({ error: "Invalid code." });
+      return res.status(401).json({ error: "Invalid password." });
     }
 
     const device = await Device.findOne({ _id: deviceId, owner: req.user._id });
     if (!device) return res.status(404).json({ error: "Device not found." });
+    if (!device.link) return res.status(400).json({ error: "This device has no link yet." });
 
-    const orderRef = newOrderRef();
-    const order = await Order.create({
-      owner: req.user._id,
-      device: device._id,
-      orderRef,
-      amountLKR: device.pricing.amountLKR,
-      amountCharged: device.pricing.amountCharged,
-      currency: device.pricing.currency,
-      country: device.pricing.country,
-      exchangeRate: device.pricing.amountLKR ? device.pricing.amountCharged / device.pricing.amountLKR : 1,
-      gateway: "test",
-      status: "paid",
-    });
-
-    device.status = "connecting";
-    device.connectingUntil = randomConnectingUntil();
-    device.order = order._id;
-    await device.save();
-
-    res.json({ ok: true, order });
+    res.json({ ok: true, link: device.link });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Could not activate. Try again." });
+    res.status(500).json({ error: "Could not confirm. Try again." });
   }
 });
 
