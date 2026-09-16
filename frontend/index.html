@@ -194,7 +194,6 @@
     <div class="wizard-steps">
       <div class="wizard-step-dot current"></div>
       <div class="wizard-step-dot"></div>
-      <div class="wizard-step-dot"></div>
     </div>
 
     <div class="wizard-body">
@@ -220,23 +219,8 @@
         </label>
       </div>
 
-      <!-- Step 2: country / price -->
+      <!-- Step 2: device info -->
       <div id="wizard-step-2" class="wizard-pane hidden">
-        <h2>Where's this device based?</h2>
-        <p class="step-hint">Price is shown in the local currency automatically.</p>
-
-        <div class="field">
-          <label>Country</label>
-          <select id="wizard-country"></select>
-        </div>
-
-        <div class="price-display" id="wizard-price">
-          <span class="label">Calculating…</span>
-        </div>
-      </div>
-
-      <!-- Step 3: device info -->
-      <div id="wizard-step-3" class="wizard-pane hidden">
         <h2>Device details</h2>
         <p class="step-hint">Find the IMEI in Settings → About phone, or by dialing *#06#.</p>
 
@@ -261,6 +245,33 @@
       <button class="btn btn-ghost" id="wizard-back">Back</button>
       <button class="btn btn-ghost" id="wizard-close">Cancel</button>
       <button class="btn btn-primary" id="wizard-next">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== LINK READY MODAL ============== -->
+<!-- Shown after password confirmation reveals a device's auto-generated
+     Private DNS link. "OK" just closes this — the device is already
+     saved as "pending" in the database either way, even if this is
+     dismissed by clicking outside or navigating back. -->
+<div id="link-modal-overlay" class="wizard-overlay hidden">
+  <div class="wizard" style="max-width:380px;">
+    <div class="wizard-body">
+      <div class="wizard-pane">
+        <h2>Link ready</h2>
+        <p class="step-hint">මේ link එක customer ගේ phone එකේ Private DNS field එකට දාන්න කියන්න.</p>
+
+        <div class="link-reveal-box">
+          <code id="link-reveal-text" class="mono"></code>
+        </div>
+
+        <p class="step-hint" style="margin-top:10px;">Status එක "Pending" විදිහට list එකේ පේනවා — device එක actually connect උනාම automatic "Connected" වෙනවා.</p>
+      </div>
+    </div>
+
+    <div class="wizard-footer">
+      <button class="btn btn-ghost" id="link-copy-btn">Copy</button>
+      <button class="btn btn-primary" id="link-ok-btn">OK</button>
     </div>
   </div>
 </div>
