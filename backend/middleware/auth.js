@@ -52,4 +52,17 @@ function requireAdminToken(req, res, next) {
   }
 }
 
-module.exports = { requireAuth, requireAdmin, requireAdminToken };
+// ---- Internal-only gate for the DoT proxy server ----
+// Not a user or admin login — a shared secret between this API and the
+// separate proxy process that actually relays customer DNS traffic. The
+// proxy calls POST /api/devices/internal/heartbeat using this token
+// whenever it sees traffic for a device's link.
+function requireInternalToken(req, res, next) {
+  const token = req.headers["x-internal-token"];
+  if (!token || token !== process.env.INTERNAL_API_TOKEN) {
+    return res.status(403).json({ error: "Forbidden." });
+  }
+  next();
+}
+
+module.exports = { requireAuth, requireAdmin, requireAdminToken, requireInternalToken };
