@@ -248,11 +248,9 @@ async function enterApp() {
   $("#sidebar-email").textContent = state.user.email;
   fillAccountView();
 
-  const [{ brands }, { countries }] = await Promise.all([Api.brands(), Api.countries()]);
+  const { brands } = await Api.brands();
   state.brands = brands;
-  state.countries = countries;
   populateBrandSelect();
-  populateCountrySelect();
 
   await refreshDevices();
 }
@@ -263,45 +261,18 @@ async function refreshDevices() {
   const { devices } = await Api.listDevices();
   state.devices = devices;
   renderDevices();
-  manageConnectingWatchers();
+  ensureStatusPolling();
 }
 
-/* ---- "Connecting" live countdown + auto-refresh until it flips to active ---- */
+/* ---- Keep statuses live — a device can genuinely connect/disconnect at
+   any moment (real DNS traffic, not a fake timer), so just poll while the
+   devices view might be visible. ---- */
 
-let countdownTicker = null;
 let statusPoller = null;
 
-function manageConnectingWatchers() {
-  const hasConnecting = state.devices.some((d) => d.status === "connecting");
-
-  if (!countdownTicker) {
-    countdownTicker = setInterval(tickCountdowns, 1000);
-  }
-
-  if (hasConnecting && !statusPoller) {
-    // Ask the server every 10s — it lazily flips connecting -> active once the window passes
-    statusPoller = setInterval(refreshDevices, 10000);
-  } else if (!hasConnecting && statusPoller) {
-    clearInterval(statusPoller);
-    statusPoller = null;
-  }
-}
-
-function tickCountdowns() {
-  $$(".connect-countdown").forEach((el) => {
-    const until = new Date(el.dataset.countdown).getTime();
-    const remainingMs = until - Date.now();
-    const span = el.querySelector("span");
-
-    if (remainingMs <= 0) {
-      span.textContent = "00:00";
-      return;
-    }
-    const totalSec = Math.floor(remainingMs / 1000);
-    const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
-    const ss = String(totalSec % 60).padStart(2, "0");
-    span.textContent = `${mm}:${ss}`;
-  });
+function ensureStatusPolling() {
+  if (statusPoller) return;
+  statusPoller = setInterval(refreshDevices, 10000);
 }
 
 function renderDevices() {
@@ -327,17 +298,15 @@ function renderDevices() {
     });
   });
 
-  $$(".device-pay", grid).forEach((btn) => {
-    btn.addEventListener("click", () => payForDevice(btn.dataset.id));
+  $$(".device-view-link", grid).forEach((btn) => {
+    btn.addEventListener("click", () => revealLink(btn.dataset.id));
   });
 }
 
 const STATUS_LABEL = {
-  active: "Connected",
-  connecting: "Connecting",
-  pending_payment: "Payment pending",
-  failed: "Payment failed",
-  expired: "Expired",
+  pending: "Pending",
+  connected: "Connected",
+  disconnected: "Disconnected",
 };
 
 function deviceCardHtml(d) {
@@ -345,15 +314,12 @@ function deviceCardHtml(d) {
   if (d.protection.appAds) tags.push("In-app ads");
   if (d.protection.backgroundAds) tags.push("Background ads");
 
-  const payButton =
-    d.status === "pending_payment"
-      ? `<button class="btn btn-primary device-pay" data-id="${d._id}" style="padding:7px 14px;font-size:12.5px;">Pay now</button>`
-      : "";
-
-  const countdown =
-    d.status === "connecting" && d.connectingUntil
-      ? `<div class="connect-countdown" data-countdown="${d.connectingUntil}">Connecting… <span class="mono">--:--</span></div>`
-      : "";
+  let networkLine = "";
+  if (d.network?.lastSeenAt) {
+    const when = new Date(d.network.lastSeenAt).toLocaleString();
+    const changedNote = d.network.ipChanged ? " · IP changed since first connect" : "";
+    networkLine = `<div class="device-network-info${d.network.ipChanged ? " changed" : ""}">${d.network.reverseDns || d.network.ip || ""} · last seen ${when}${changedNote}</div>`;
+  }
 
   return `
     <div class="device-card" data-device-id="${d._id}">
@@ -361,7 +327,7 @@ function deviceCardHtml(d) {
         <div>
           <div class="device-brand">${escapeHtml(d.brand)}</div>
           <div class="device-imei mono">IMEI ${escapeHtml(d.imei)}</div>
-          ${countdown}
+          ${networkLine}
         </div>
         <span class="status-pill status-${d.status}">${STATUS_LABEL[d.status] || d.status}</span>
       </div>
@@ -369,9 +335,9 @@ function deviceCardHtml(d) {
         ${tags.map((t) => `<span class="tag">${t}</span>`).join("")}
       </div>
       <div class="device-card-footer">
-        <span class="device-price">${d.pricing.currency} ${Number(d.pricing.amountCharged).toFixed(2)}</span>
+        <span class="device-price mono" style="font-size:12px;">${escapeHtml(d.link || "")}</span>
         <div style="display:flex; gap:8px;">
-          ${payButton}
+          <button class="btn btn-ghost device-view-link" data-id="${d._id}" style="padding:7px 12px;font-size:12.5px;">View Link</button>
           <button class="btn btn-ghost device-remove" data-id="${d._id}" style="padding:7px 12px;font-size:12.5px;">Remove</button>
         </div>
       </div>
@@ -389,14 +355,8 @@ function populateBrandSelect() {
   sel.innerHTML = state.brands.map((b) => `<option value="${b}">${b === "OTHER" ? "OTHER (type below)" : b}</option>`).join("");
 }
 
-function populateCountrySelect() {
-  const sel = $("#wizard-country");
-  sel.innerHTML = state.countries.map((c) => `<option value="${c.code}">${c.code} — ${c.currency}</option>`).join("");
-  sel.value = state.user?.country || "LK";
-}
-
 function openWizard() {
-  state.wizard = { step: 1, protection: { appAds: true, backgroundAds: true }, country: state.user?.country || "LK", price: null, imei: "", brand: state.brands[0] || "" };
+  state.wizard = { step: 1, protection: { appAds: true, backgroundAds: true }, imei: "", brand: state.brands[0] || "" };
   $("#wizard-overlay").classList.remove("hidden");
   syncWizardCheckboxes();
   renderWizardStep();
@@ -422,26 +382,7 @@ function renderWizardStep() {
   $(`#wizard-step-${state.wizard.step}`).classList.remove("hidden");
 
   $("#wizard-back").classList.toggle("hidden", state.wizard.step === 1);
-  $("#wizard-next").textContent = state.wizard.step === 3 ? "Review & pay" : "Continue";
-}
-
-async function refreshWizardPrice() {
-  const country = $("#wizard-country").value;
-  state.wizard.country = country;
-  const priceBox = $("#wizard-price");
-  priceBox.innerHTML = `<span class="label">Calculating...</span>`;
-  try {
-    const price = await Api.price(country);
-    state.wizard.price = price;
-    priceBox.innerHTML = `
-      <div>
-        <div class="label">Setup cost — 1 device</div>
-        <div class="amount">${price.amountDisplay}</div>
-      </div>
-      <div class="label mono">${price.currency}</div>`;
-  } catch (err) {
-    priceBox.innerHTML = `<span class="label">Couldn't load price. Check your connection.</span>`;
-  }
+  $("#wizard-next").textContent = state.wizard.step === 2 ? "Generate Link" : "Continue";
 }
 
 function initWizard() {
@@ -455,8 +396,6 @@ function initWizard() {
       syncWizardCheckboxes();
     });
   });
-
-  $("#wizard-country").addEventListener("change", refreshWizardPrice);
 
   $("#wizard-brand").addEventListener("change", () => {
     $("#wizard-brand-custom").classList.toggle("hidden", $("#wizard-brand").value !== "OTHER");
@@ -475,21 +414,10 @@ function initWizard() {
       }
       state.wizard.step = 2;
       renderWizardStep();
-      refreshWizardPrice();
       return;
     }
 
     if (state.wizard.step === 2) {
-      if (!state.wizard.price) {
-        showToast("Wait for the price to load.", "error");
-        return;
-      }
-      state.wizard.step = 3;
-      renderWizardStep();
-      return;
-    }
-
-    if (state.wizard.step === 3) {
       const imei = $("#wizard-imei").value.trim();
       if (!/^\d{14,17}$/.test(imei)) {
         showToast("Enter a valid IMEI (14-17 digits).", "error");
@@ -518,16 +446,11 @@ async function submitDevice() {
       imei: state.wizard.imei,
       brand: state.wizard.brand,
       protection: state.wizard.protection,
-      country: state.wizard.country,
     });
     closeWizard();
-    showToast("Device saved. Complete payment to start setup.");
     await refreshDevices();
-    if (device.pricing.currency === "LKR") {
-      payForDevice(device._id);
-    } else {
-      showToast("Card checkout for non-LKR pricing needs a Stripe account set up by the site owner.", "error");
-    }
+    // Link is already generated server-side — reveal it right away.
+    revealLink(device._id);
   } catch (err) {
     showToast(err.message, "error");
   } finally {
@@ -535,18 +458,39 @@ async function submitDevice() {
   }
 }
 
-/* ---------------- Pay now (shop-internal: password gated, no real gateway) ---------------- */
+/* ---------------- Reveal link (password-gated, same prompt as before) ---------------- */
 
-async function payForDevice(deviceId) {
-  const code = prompt("Enter password to confirm payment:");
-  if (code === null) return; // cancelled
+function openLinkModal(link) {
+  $("#link-reveal-text").textContent = link;
+  $("#link-modal-overlay").classList.remove("hidden");
+}
+
+function closeLinkModal() {
+  $("#link-modal-overlay").classList.add("hidden");
+}
+
+async function revealLink(deviceId) {
+  const code = prompt("Enter password to view this device's link:");
+  if (code === null) return; // cancelled — device stays "pending", nothing lost
   try {
-    await Api.testActivate(deviceId, code);
-    showToast("Payment confirmed. Setting up device...");
-    await refreshDevices();
+    const { link } = await Api.testActivate(deviceId, code);
+    openLinkModal(link);
   } catch (err) {
     showToast(err.message, "error");
   }
+}
+
+function initLinkModal() {
+  $("#link-copy-btn").addEventListener("click", async () => {
+    const text = $("#link-reveal-text").textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast("Link copied.");
+    } catch (_) {
+      showToast("Couldn't copy — select the text manually.", "error");
+    }
+  });
+  $("#link-ok-btn").addEventListener("click", closeLinkModal);
 }
 
 /* ---------------- Boot ---------------- */
@@ -556,6 +500,7 @@ async function boot() {
   initNav();
   initWizard();
   initAccountForms();
+  initLinkModal();
 
   if (Api.token) {
     try {
