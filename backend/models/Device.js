@@ -20,46 +20,29 @@ const deviceSchema = new mongoose.Schema(
       backgroundAds: { type: Boolean, default: true }, // block background/notification ads
     },
 
-    // Snapshot of what was charged — left optional for now, payment is being
-    // wired up later. Nothing below depends on this being filled in.
+    // Snapshot of what was charged, so price history doesn't move if rates change later
     pricing: {
-      amountLKR: { type: Number },
-      amountCharged: { type: Number },
-      currency: { type: String },
-      country: { type: String },
+      amountLKR: { type: Number, required: true },
+      amountCharged: { type: Number, required: true },
+      currency: { type: String, required: true },
+      country: { type: String, required: true },
     },
-
-    // The unique subdomain that makes ad-blocking actually work for this
-    // device, e.g. token "a7x92k" -> link "a7x92k.yourdomain.eu.org".
-    // Auto-generated the moment the device is created — no payment gate.
-    token: { type: String, unique: true, sparse: true, index: true },
-    link: { type: String },
 
     status: {
       type: String,
-      enum: ["pending", "connected", "disconnected"],
-      default: "pending",
+      enum: ["pending_payment", "connecting", "active", "failed", "expired"],
+      default: "pending_payment",
     },
 
-    // Filled in automatically once the device's Private DNS traffic is
-    // actually seen by the proxy server — this is real, not simulated.
-    network: {
-      ip: { type: String, default: null }, // the IP the device first/last connected from
-      firstConnectedAt: { type: Date, default: null },
-      lastSeenAt: { type: Date, default: null },
-      reverseDns: { type: String, default: null }, // PTR lookup on the IP, if any (hints at ISP/network)
-      // Once a device has connected once, we "pair" it to that IP so a
-      // stolen/shared link is easier to notice. This is a soft signal, not
-      // a hard lock — mobile IPs change often when carriers reassign them,
-      // so we don't block reconnects from a new IP, we just flag it.
-      pairedIp: { type: String, default: null },
-      ipChanged: { type: Boolean, default: false },
-    },
+    // When status is "connecting", this is the timestamp the device should
+    // flip to "active" — gives the customer a realistic-looking setup wait
+    // (2-3 minutes) instead of jumping straight from paid to protected.
+    connectingUntil: { type: Date },
 
     dnsProfile: {
       configured: { type: Boolean, default: false },
       configuredAt: { type: Date },
-      note: { type: String, trim: true }, // internal note from support
+      note: { type: String, trim: true }, // internal note from support, e.g. "profile installed remotely on 2026-08-27"
     },
 
     order: { type: mongoose.Schema.Types.ObjectId, ref: "Order" },
