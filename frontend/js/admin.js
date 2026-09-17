@@ -139,9 +139,10 @@ function renderUserTable() {
 
 /* ---------------- User detail side panel ---------------- */
 
-const DEVICE_STATUSES = ["pending", "connected", "disconnected"];
+const DEVICE_STATUSES = ["pending_payment", "connecting", "active", "failed", "expired"];
 const STATUS_LABEL = {
-  pending: "Pending", connected: "Connected", disconnected: "Disconnected",
+  active: "Connected", connecting: "Connecting", pending_payment: "Payment pending",
+  failed: "Payment failed", expired: "Expired",
 };
 
 async function openUserPanel(userId) {
