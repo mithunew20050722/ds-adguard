@@ -115,17 +115,15 @@ router.put("/devices/:id", async (req, res) => {
 
     const { status, note } = req.body;
     if (status !== undefined) {
-      const allowed = ["pending", "connected", "disconnected"];
+      const allowed = ["pending_payment", "connecting", "active", "failed", "expired"];
       if (!allowed.includes(status)) {
         return res.status(400).json({ error: "Invalid status." });
       }
-      // Manual override by the shop — e.g. forcing "disconnected" if a
-      // customer reports an issue. Real status still recalculates from
-      // network.lastSeenAt on the next heartbeat, so this is a temporary nudge.
       device.status = status;
-      if (status === "connected" && !device.network.firstConnectedAt) {
-        device.network.firstConnectedAt = new Date();
-        device.network.lastSeenAt = new Date();
+      if (status === "active") {
+        device.dnsProfile.configured = true;
+        device.dnsProfile.configuredAt = new Date();
+        device.connectingUntil = undefined;
       }
     }
     if (note !== undefined) device.dnsProfile.note = note;
